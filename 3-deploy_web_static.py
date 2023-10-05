@@ -1,38 +1,43 @@
 #!/usr/bin/python3
-"""
-Fabric script (based on the file 1-pack_web_static.py) that
-       distributes an archive to your web servers
-Returns False if the file at the path archive_path doesn't exist
-"""
+# Fabfile to create and distribute an archive to a web server.
 import os.path
-import time
-from fabric.api import *
-from fabric.operations import run, put, sudo
-from datetime import date
-env.hosts = ['66.70.184.210', '142.44.164.128']
+from datetime import datetime
+from fabric.api import env
+from fabric.api import local
+from fabric.api import put
+from fabric.api import run
+
+env.hosts = ["104.196.168.90", "35.196.46.172"]
 
 
 def do_pack():
-    timestamp = time.strftime("%Y%m%d%H%M%S")
-    try:
-        local("mkdir -p versions")
-        local("tar -cvzf versions/web_static_{:s}.tgz web_static/".
-              format(timestamp))
-        return ("versions/web_static_{:s}.tgz".format(timestamp))
-    except:
+    """Create a tar gzipped archive of the directory web_static."""
+    dt = datetime.utcnow()
+    file = "versions/web_static_{}{}{}{}{}{}.tgz".format(dt.year,
+                                                         dt.month,
+                                                         dt.day,
+                                                         dt.hour,
+                                                         dt.minute,
+                                                         dt.second)
+    if os.path.isdir("versions") is False:
+        if local("mkdir -p versions").failed is True:
+            return None
+    if local("tar -cvzf {} web_static".format(file)).failed is True:
         return None
+    return file
 
 
 def do_deploy(archive_path):
-    """ script that distributes archive to web servers
-    All remote commands must be executed on your both web servers
-    (using env.hosts = ['<IP web-01>', 'IP web-02'] variable in your script)
-    Returns True if all operations has been done correctly,
-            otherwise returns False
+    """Distributes an archive to a web server.
+
+    Args:
+        archive_path (str): The path of the archive to distribute.
+    Returns:
+        If the file doesn't exist at archive_path or an error occurs - False.
+        Otherwise - True.
     """
     if (os.path.isfile(archive_path) is False):
         return False
-
     try:
         """Upload the archive to the /tmp/ directory of the web server"""
         put(archive_path, "/tmp/")
